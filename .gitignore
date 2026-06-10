@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environments
+.venv/
+venv/
+
+# Experiment artifacts
+checkpoints/
+data/
+results/
+outputs/
+wandb/
+*.log
+
+# Editors
+.vscode/
+.idea/
+.DS_Store.ruff_cache/

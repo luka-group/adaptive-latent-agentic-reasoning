@@ -1,0 +1,5 @@
+# Agent-loop registry. verl AgentLoopWorker imports each _target_
+# at start so @register fires inside the worker process.
+
+- name: latent_agent
+  _target_: search.rl.agent_loop.LatentAgentLoop

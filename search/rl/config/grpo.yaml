@@ -1,0 +1,46 @@
+# AR-GRPO (search domain).
+#   - Custom agent loop (vLLM plugin handles <latent>••••</latent> autonomously)
+#   - Rule-based reward + AR-GRPO bucket shaping (see alar.rl.ar_grpo)
+#   - micro-batch sizes forced to 1 (LatentQwen2 forward asserts bs=1
+#     per sample inside the iterative latent expansion).
+#
+# Required env vars (set by scripts/train_stage2.sh):
+#   VERL_CONFIG_DIR   absolute path to verl's trainer config dir
+#                     (defaults to <repo>/verl/verl/trainer/config)
+#   SEARCH_RL_DIR     absolute path to <repo>/search/rl
+
+hydra:
+  searchpath:
+    - file://${oc.env:VERL_CONFIG_DIR}
+
+defaults:
+  - ppo_trainer
+  - _self_
+
+data:
+  # Defaults; CLI in scripts/train_stage2.sh overrides per-run. Sized
+  # from observed rollouts: prompt ~250 tok (system+question), full
+  # response (assistant + masked info chunks) p99 ~1700 tok over 3-4
+  # turns; budgeting 2500 covers the 6-turn worst case with slack.
+  max_prompt_length: 512
+  max_response_length: 2500
+  train_batch_size: 16
+  return_raw_chat: True
+  shuffle: False
+
+actor_rollout_ref:
+  hybrid_engine: True
+  rollout:
+    name: vllm
+    multi_turn:
+      enable: True
+      max_assistant_turns: 6
+
+    agent:
+      default_agent_loop: latent_agent
+      agent_loop_config_path: ${oc.env:SEARCH_RL_DIR}/config/agent_loops.yaml
+      num_workers: 8
+
+custom_reward_function:
+  path: ${oc.env:SEARCH_RL_DIR}/reward.py
+  name: compute_score

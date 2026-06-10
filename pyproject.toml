@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alar"
+version = "1.0.0"
+description = "Adaptive Latent Agentic Reasoning (ALAR): dual-mode latent/explicit reasoning for LLM agents, trained with AASD (SFT) + AR-GRPO (RL)."
+requires-python = ">=3.10,<3.13"
+
+# Unified deps for SFT (training) + vLLM 0.19.0 (inference / RL rollout).
+# The vllm pin matters: alar/vllm_plugin.py patches GPUModelRunner internals
+# (`_preprocess` / `_update_states_after_model_execute`) against this API.
+dependencies = [
+    "torch>=2.10,<2.11",
+    "transformers>=4.57,<4.58",
+    "peft>=0.19,<1",
+    "accelerate>=1.0,<2",
+    "aiohttp>=3.9,<4",
+    "vllm==0.19.0",
+    "datasets>=4.0,<5",
+    "fastapi",
+    "numpy",
+    "tqdm",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+# vLLM auto-loads `alar.vllm_plugin:register` in every process. The
+# register() function no-ops unless LATENT_VLLM=1 is set.
+[project.entry-points."vllm.general_plugins"]
+latent = "alar.vllm_plugin:register"
+
+[tool.setuptools.packages.find]
+include = ["alar*", "search*", "tool*"]
+exclude = ["verl*", "results*", "outputs*", "checkpoints*", "data*"]

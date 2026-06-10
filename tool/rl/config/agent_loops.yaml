@@ -1,0 +1,5 @@
+# Agent-loop registry. verl AgentLoopWorker imports each _target_
+# at startup so the @register decorator fires inside the worker process.
+
+- name: tool_latent_agent
+  _target_: tool.rl.agent_loop.ToolLatentAgentLoop

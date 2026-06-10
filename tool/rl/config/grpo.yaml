@@ -1,0 +1,47 @@
+# AR-GRPO (tool domain).
+#   - Single-shot agent loop (vLLM plugin handles <latent>••••</latent> autonomously).
+#   - AST-match reward on <tool_call> JSON + AR-GRPO continuous-f shaping
+#     (see alar.rl.ar_grpo).
+#   - micro-batch sizes forced to 1 (LatentQwen3 forward asserts bs=1 per
+#     sample inside the iterative latent expansion).
+#
+# Required env vars (set by scripts/train_stage2.sh):
+#   VERL_CONFIG_DIR   absolute path to verl's trainer config dir
+#                     (defaults to <repo>/verl/verl/trainer/config)
+#   TOOL_RL_DIR       absolute path to <repo>/tool/rl
+
+hydra:
+  searchpath:
+    - file://${oc.env:VERL_CONFIG_DIR}
+
+defaults:
+  - ppo_trainer
+  - _self_
+
+data:
+  # Tool prompts: system + tools block (Qwen3 native) + user question +
+  # `<|im_start|>assistant\n`. SFT-side measurement: p99=3581, max=4005
+  # over the score=1.5 trace set, so 4096 covers everything.
+  # Response = single assistant turn with reasoning + tool calls + EOS;
+  # p99 measured at ~3100 tokens with latent_prob=0.5, so 4096 is safe.
+  # max_model_len = max_prompt + max_response = 8192 (set in launcher).
+  max_prompt_length: 4096
+  max_response_length: 4096
+  train_batch_size: 16
+  return_raw_chat: True
+  shuffle: False
+
+actor_rollout_ref:
+  hybrid_engine: True
+  rollout:
+    name: vllm
+    multi_turn:
+      enable: False
+    agent:
+      default_agent_loop: tool_latent_agent
+      agent_loop_config_path: ${oc.env:TOOL_RL_DIR}/config/agent_loops.yaml
+      num_workers: 8
+
+custom_reward_function:
+  path: ${oc.env:TOOL_RL_DIR}/reward.py
+  name: compute_score
